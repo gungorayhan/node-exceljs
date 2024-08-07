@@ -1,4 +1,3 @@
-
 const ExcelJS = require('exceljs');
 const path = require('path');
 
@@ -10,6 +9,7 @@ function naturalSort(a, b) {
 // Excel dosyasını oku
 const workbook = new ExcelJS.Workbook();
 const filePath = path.join(__dirname, 'kesim-adetleri.xlsx');
+
 function turkceKarakterleriDegistir(metin) {
     const karakterler = {
         'İ': 'I',
@@ -29,12 +29,6 @@ function turkceKarakterleriDegistir(metin) {
     return metin.split('').map(karakter => karakterler[karakter] || karakter).join('');
 }
 
-
-// let renk = turkceKarakterleriDegistir(renkk);
-
-
-
-
 workbook.xlsx.readFile(filePath).then(() => {
     const worksheet = workbook.getWorksheet(1); // İlk sayfayı seçin
     const totals = {};
@@ -48,23 +42,28 @@ workbook.xlsx.readFile(filePath).then(() => {
         const kesimAdeti = row.getCell(3).value; // Kesim Adeti sütunu (3. sütun)
         const renkTurkce = row.getCell(4).value; // VARYANT sütunu (4. sütun)
         const renk = turkceKarakterleriDegistir(renkTurkce);
-        // Toplamları hesapla
-        if (!totals[renk]) totals[renk] = {};
-        if (!totals[renk][model]) totals[renk][model] = {};
-        if (!totals[renk][model][siparis]) totals[renk][model][siparis] = 0;
+        const musteri = row.getCell(5).value; // Müşteri sütunu (5. sütun)
 
-        totals[renk][model][siparis] += kesimAdeti;
-        console.log(totals);
+        // Toplamları hesapla
+        if (!totals[musteri]) totals[musteri] = {};
+        if (!totals[musteri][renk]) totals[musteri][renk] = {};
+        if (!totals[musteri][renk][model]) totals[musteri][renk][model] = {};
+        if (!totals[musteri][renk][model][siparis]) totals[musteri][renk][model][siparis] = 0;
+
+        totals[musteri][renk][model][siparis] += kesimAdeti;
     });
 
-    // Model ve sipariş numaralarını doğal sıralama ile sıralı hale getir
-    const sortedData = Object.keys(totals).sort().reduce((acc, renk) => {
-        acc[renk] = Object.keys(totals[renk]).sort(naturalSort).reduce((modelAcc, model) => {
-            modelAcc[model] = Object.keys(totals[renk][model]).sort(naturalSort).reduce((siparisAcc, siparis) => {
-                siparisAcc[siparis] = totals[renk][model][siparis];
-                return siparisAcc;
+    // Model, sipariş numaralarını ve müşteri bilgilerini doğal sıralama ile sıralı hale getir
+    const sortedData = Object.keys(totals).sort().reduce((acc, musteri) => {
+        acc[musteri] = Object.keys(totals[musteri]).sort().reduce((renkAcc, renk) => {
+            renkAcc[renk] = Object.keys(totals[musteri][renk]).sort(naturalSort).reduce((modelAcc, model) => {
+                modelAcc[model] = Object.keys(totals[musteri][renk][model]).sort(naturalSort).reduce((siparisAcc, siparis) => {
+                    siparisAcc[siparis] = totals[musteri][renk][model][siparis];
+                    return siparisAcc;
+                }, {});
+                return modelAcc;
             }, {});
-            return modelAcc;
+            return renkAcc;
         }, {});
         return acc;
     }, {});
@@ -73,15 +72,17 @@ workbook.xlsx.readFile(filePath).then(() => {
     const newWorkbook = new ExcelJS.Workbook();
     const newWorksheet = newWorkbook.addWorksheet('Toplam Kesim Adetleri');
 
-    // Başlık satırı ekle (sizin belirttiğiniz sıraya göre)
-    newWorksheet.addRow(['Model', 'Sipariş no', 'Kesim adedi', 'VARYANT']);
+    // Başlık satırı ekle
+    newWorksheet.addRow(['Müşteri', 'Model', 'Sipariş no', 'Kesim adedi', 'VARYANT']);
 
     // Sıralanmış verileri yeni worksheet'e ekle
-    Object.keys(sortedData).forEach(renk => {
-        Object.keys(sortedData[renk]).forEach(model => {
-            Object.keys(sortedData[renk][model]).forEach(siparis => {
-                const kesimAdeti = sortedData[renk][model][siparis];
-                newWorksheet.addRow([model, siparis, kesimAdeti, renk]);
+    Object.keys(sortedData).forEach(musteri => {
+        Object.keys(sortedData[musteri]).forEach(renk => {
+            Object.keys(sortedData[musteri][renk]).forEach(model => {
+                Object.keys(sortedData[musteri][renk][model]).forEach(siparis => {
+                    const kesimAdeti = sortedData[musteri][renk][model][siparis];
+                    newWorksheet.addRow([musteri, model, siparis, kesimAdeti, renk]);
+                });
             });
         });
     });
