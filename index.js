@@ -10,6 +10,30 @@ function naturalSort(a, b) {
 // Excel dosyasını oku
 const workbook = new ExcelJS.Workbook();
 const filePath = path.join(__dirname, 'kesim-adetleri.xlsx');
+function turkceKarakterleriDegistir(metin) {
+    const karakterler = {
+        'İ': 'I',
+        'ı': 'i',
+        'Ş': 'S',
+        'ş': 's',
+        'Ç': 'C',
+        'ç': 'c',
+        'Ğ': 'G',
+        'ğ': 'g',
+        'Ö': 'O',
+        'ö': 'o',
+        'Ü': 'U',
+        'ü': 'u'
+    };
+
+    return metin.split('').map(karakter => karakterler[karakter] || karakter).join('');
+}
+
+
+// let renk = turkceKarakterleriDegistir(renkk);
+
+
+
 
 workbook.xlsx.readFile(filePath).then(() => {
     const worksheet = workbook.getWorksheet(1); // İlk sayfayı seçin
@@ -22,14 +46,15 @@ workbook.xlsx.readFile(filePath).then(() => {
         const model = row.getCell(1).value;  // Model sütunu (1. sütun)
         const siparis = row.getCell(2).value; // Sipariş no sütunu (2. sütun)
         const kesimAdeti = row.getCell(3).value; // Kesim Adeti sütunu (3. sütun)
-        const renk = row.getCell(4).value; // VARYANT sütunu (4. sütun)
-
+        const renkTurkce = row.getCell(4).value; // VARYANT sütunu (4. sütun)
+        const renk = turkceKarakterleriDegistir(renkTurkce);
         // Toplamları hesapla
         if (!totals[renk]) totals[renk] = {};
         if (!totals[renk][model]) totals[renk][model] = {};
         if (!totals[renk][model][siparis]) totals[renk][model][siparis] = 0;
 
         totals[renk][model][siparis] += kesimAdeti;
+        console.log(totals);
     });
 
     // Model ve sipariş numaralarını doğal sıralama ile sıralı hale getir
